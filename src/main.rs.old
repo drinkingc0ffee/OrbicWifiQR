@@ -44,7 +44,7 @@ fn parse_event(input: &[u8]) -> Option<Event> {
 }
 
 fn clear_display(fb: &mut OrbicFramebuffer) {
-    fb.write_buffer(&vec![(255, 255, 255); 128 * 128]);
+    fb.write_buffer(&vec![(0, 0, 0); 128 * 128]);
 }
 
 fn get_wifi_credentials() -> (String, String, String) {
@@ -120,9 +120,9 @@ fn display_qr_code(fb: &mut OrbicFramebuffer, qr_text: &str) {
     // Try with lower error correction level for easier scanning
     if let Ok(code) = QrCode::with_error_correction_level(qr_text, qrcode::EcLevel::L) {
         let image = code.render::<Luma<u8>>().max_dimensions(120, 120).build();
-        let mut buffer = vec![(255, 255, 255); 128 * 128];
-        for y in 0..image.height().min(120) {
-            for x in 0..image.width().min(120) {
+        let mut buffer = vec![(0, 0, 0); 128 * 128];
+        for y in 0..image.height().min(123) {
+            for x in 0..image.width().min(123) {
                 let pixel = image.get_pixel(x, y)[0];
                 let color = if pixel == 0 { (0, 0, 0) } else { (255, 255, 255) };
                 let idx = (y + 4) as usize * 128 + (x + 4) as usize;
@@ -173,8 +173,8 @@ fn main() {
                                     let (ssid, password, encryption) = get_wifi_credentials();
                                     if !ssid.is_empty() && !password.is_empty() {
                                         let qr = generate_wifi_qr_code(&ssid, &password, &encryption);
-                                        for _ in 0..300 { display_qr_code(&mut fb, &qr); thread::sleep(Duration::from_millis(100)); }
-                                        
+                                        display_qr_code(&mut fb, &qr);
+                                        thread::sleep(Duration::from_secs(30));
                                         clear_display(&mut fb);
                                     }
                                 }
