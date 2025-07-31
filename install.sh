@@ -4,14 +4,16 @@ echo "🔧 Installing OrbicWifiQR with Auto-Start"
 echo "========================================="
 
 # Check if adb is available
-if ! command -v adb &> /dev/null; then
-    echo "❌ Error: adb not found. Please install Android Debug Bridge (adb)"
+ADB_PATH="/Users/beisenmann/Library/Android/sdk/platform-tools/adb"
+if [ ! -f "$ADB_PATH" ]; then
+    echo "❌ Error: adb not found at $ADB_PATH"
+    echo "Please update the ADB_PATH variable in install.sh to point to your adb installation"
     exit 1
 fi
 
 # Check if device is connected
 echo "📱 Checking device connection..."
-if ! adb devices | grep -q "device$"; then
+if ! "$ADB_PATH" devices | grep -q "device$"; then
     echo "❌ Error: No device connected or device not authorized"
     echo "   Please connect your device and ensure USB debugging is enabled"
     exit 1
@@ -30,7 +32,7 @@ echo "✅ Build successful"
 
 # Create startup script with proper PATH
 echo "🔧 Creating startup script on device..."
-adb shell "/bin/rootshell -c 'cat > /data/orbic-wifi-qr/start_orbic_wifi_qr.sh << \"EOF\"
+"$ADB_PATH" shell "/bin/rootshell -c 'cat > /data/orbic-wifi-qr/start_orbic_wifi_qr.sh << \"EOF\"
 #!/bin/sh
 # OrbicWifiQR Startup Script
 
@@ -63,11 +65,11 @@ EOF'"
 
 # Make startup script executable
 echo "🔧 Making startup script executable..."
-adb shell "/bin/rootshell -c 'chmod +x /data/orbic-wifi-qr/start_orbic_wifi_qr.sh'"
+"$ADB_PATH" shell "/bin/rootshell -c 'chmod +x /data/orbic-wifi-qr/start_orbic_wifi_qr.sh'"
 
 # Create init.d script for auto-start
 echo "📝 Creating init.d script for auto-start..."
-adb shell "/bin/rootshell -c 'cat > /etc/init.d/orbic-wifi-qr << \"EOF\"
+"$ADB_PATH" shell "/bin/rootshell -c 'cat > /etc/init.d/orbic-wifi-qr << \"EOF\"
 #!/bin/sh
 ### BEGIN INIT INFO
 # Provides:          orbic-wifi-qr
@@ -117,35 +119,35 @@ EOF'"
 
 # Make init.d script executable
 echo "🔧 Making init.d script executable..."
-adb shell "/bin/rootshell -c 'chmod +x /etc/init.d/orbic-wifi-qr'"
+"$ADB_PATH" shell "/bin/rootshell -c 'chmod +x /etc/init.d/orbic-wifi-qr'"
 
 # Add to multiple startup locations for maximum compatibility
 echo "📝 Adding to startup locations..."
 
 # Method 1: /etc/init.d/rcS (most common for embedded)
-adb shell "/bin/rootshell -c 'if ! grep -q \"orbic-wifi-qr\" /etc/init.d/rcS; then
+"$ADB_PATH" shell "/bin/rootshell -c 'if ! grep -q \"orbic-wifi-qr\" /etc/init.d/rcS; then
     echo \"# Start OrbicWifiQR Display App\" >> /etc/init.d/rcS
     echo \"/data/orbic-wifi-qr/start_orbic_wifi_qr.sh &\" >> /etc/init.d/rcS
 fi'"
 
 # Method 2: /etc/rc.local
-adb shell "/bin/rootshell -c 'if [ -f /etc/rc.local ] && ! grep -q \"orbic-wifi-qr\" /etc/rc.local; then
+"$ADB_PATH" shell "/bin/rootshell -c 'if [ -f /etc/rc.local ] && ! grep -q \"orbic-wifi-qr\" /etc/rc.local; then
     echo \"# Start OrbicWifiQR Display App\" >> /etc/rc.local
     echo \"/data/orbic-wifi-qr/start_orbic_wifi_qr.sh &\" >> /etc/rc.local
 fi'"
 
 # Start the service now
 echo "▶️  Starting OrbicWifiQR service..."
-adb shell "/bin/rootshell -c '/etc/init.d/orbic-wifi-qr start'"
+"$ADB_PATH" shell "/bin/rootshell -c '/etc/init.d/orbic-wifi-qr start'"
 
 # Wait a moment and check if it started
 echo "📊 Checking service status..."
 sleep 5
-if adb shell "pgrep -f orbic-wifi-qr" | grep -q .; then
+if "$ADB_PATH" shell "pgrep -f orbic-wifi-qr" | grep -q .; then
     echo "✅ OrbicWifiQR service started successfully"
 else
     echo "⚠️  Service may not have started, checking logs..."
-    adb shell "cat /data/orbic-wifi-qr/orbic-wifi-qr.log 2>/dev/null || echo 'No log file found'"
+    "$ADB_PATH" shell "cat /data/orbic-wifi-qr/orbic-wifi-qr.log 2>/dev/null || echo 'No log file found'"
 fi
 
 echo ""
@@ -159,14 +161,14 @@ echo "   - Init Script: /etc/init.d/orbic-wifi-qr"
 echo "   - Auto-start: Enabled"
 echo ""
 echo "🔧 Service Control Commands:"
-echo "   Start:   adb shell \"/bin/rootshell /etc/init.d/orbic-wifi-qr start\""
-echo "   Stop:    adb shell \"/bin/rootshell /etc/init.d/orbic-wifi-qr stop\""
-echo "   Status:  adb shell \"/bin/rootshell /etc/init.d/orbic-wifi-qr status\""
-echo "   Restart: adb shell \"/bin/rootshell /etc/init.d/orbic-wifi-qr restart\""
+echo "   Start:   $ADB_PATH shell \"/bin/rootshell /etc/init.d/orbic-wifi-qr start\""
+echo "   Stop:    $ADB_PATH shell \"/bin/rootshell /etc/init.d/orbic-wifi-qr stop\""
+echo "   Status:  $ADB_PATH shell \"/bin/rootshell /etc/init.d/orbic-wifi-qr status\""
+echo "   Restart: $ADB_PATH shell \"/bin/rootshell /etc/init.d/orbic-wifi-qr restart\""
 echo ""
 echo "🎯 Usage:"
 echo "   Long press the menu button (event1) for 1.5-3 seconds to display WiFi QR code"
 echo "   The app runs continuously in the background and auto-starts on boot"
 echo ""
-echo "📝 Logs: adb shell \"cat /data/orbic-wifi-qr/orbic-wifi-qr.log\""
-echo "🔄 To test auto-start: adb shell \"reboot\""
+echo "📝 Logs: $ADB_PATH shell \"cat /data/orbic-wifi-qr/orbic-wifi-qr.log\""
+echo "🔄 To test auto-start: $ADB_PATH shell \"reboot\""

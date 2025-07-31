@@ -119,14 +119,26 @@ fn generate_wifi_qr_code(ssid: &str, password: &str, encryption: &str) -> String
 fn display_qr_code(fb: &mut OrbicFramebuffer, qr_text: &str) {
     // Try with lower error correction level for easier scanning
     if let Ok(code) = QrCode::with_error_correction_level(qr_text, qrcode::EcLevel::L) {
+        // Use 120x120 size for reliability, but center it on 128x128 display
         let image = code.render::<Luma<u8>>().max_dimensions(120, 120).build();
         let mut buffer = vec![(255, 255, 255); 128 * 128];
-        for y in 0..image.height().min(120) {
-            for x in 0..image.width().min(120) {
-                let pixel = image.get_pixel(x, y)[0];
+        
+        // Calculate centering offsets (120x120 centered on 128x128 = 4 pixel margin on each side)
+        let qr_width = image.width() as i32;
+        let qr_height = image.height() as i32;
+        let offset_x = (128 - qr_width) / 2;
+        let offset_y = (128 - qr_height) / 2;
+        
+        for y in 0..qr_height {
+            for x in 0..qr_width {
+                let pixel = image.get_pixel(x as u32, y as u32)[0];
                 let color = if pixel == 0 { (0, 0, 0) } else { (255, 255, 255) };
-                let idx = (y + 4) as usize * 128 + (x + 4) as usize;
-                buffer[idx] = color;
+                let buffer_x = (x + offset_x) as usize;
+                let buffer_y = (y + offset_y) as usize;
+                if buffer_x < 128 && buffer_y < 128 {
+                    let idx = buffer_y * 128 + buffer_x;
+                    buffer[idx] = color;
+                }
             }
         }
         fb.write_buffer(&buffer);

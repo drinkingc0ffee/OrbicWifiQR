@@ -6,3 +6,6 @@ edition = "2021"
 [dependencies]
 qrcode = "0.14"
 image = "0.25"
+
+[target.armv7-unknown-linux-musleabihf]
+rustflags = ["-C", "target-feature=+crt-static"]
