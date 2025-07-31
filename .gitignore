@@ -1,0 +1,71 @@
+# Rust build artifacts
+target/
+Cargo.lock
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Docker
+.dockerignore
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# Build outputs
+*.o
+*.so
+*.dylib
+*.dll
+*.exe
+
+# Documentation build
+docs/_build/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Device-specific files
+device_logs/
+adb_logs/
+
+# Backup files
+*.orig
+*.rej
+
+# Coverage reports
+coverage/
+*.profraw
+
+# Profiling data
+*.prof
+
+# Rust profiling
+*.pgo
+
+# Generated documentation
+doc/
+
+# Backup files created by install script
+*.pid 

@@ -1,0 +1,118 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        target: armv7-unknown-linux-musleabihf
+        override: true
+    
+    - name: Cache Rust dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
+    
+    - name: Check code formatting
+      run: cargo fmt -- --check
+    
+    - name: Run clippy
+      run: cargo clippy -- -D warnings
+    
+    - name: Build for ARM (musl)
+      run: |
+        docker build -t orbic-wifi-qr-devenv -f devenv.dockerfile .
+        docker run --rm -v ${{ github.workspace }}:/workdir -w /workdir orbic-wifi-qr-devenv sh -c 'cargo build --release --target="armv7-unknown-linux-musleabihf"'
+    
+    - name: Verify binary size
+      run: |
+        if [ -f target/armv7-unknown-linux-musleabihf/release/orbic-wifi-qr ]; then
+          echo "✅ Binary built successfully"
+          ls -la target/armv7-unknown-linux-musleabihf/release/orbic-wifi-qr
+        else
+          echo "❌ Binary not found"
+          exit 1
+        fi
+
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Check shell scripts
+      run: |
+        shellcheck build.sh install.sh || true
+        chmod +x build.sh install.sh
+    
+    - name: Check documentation
+      run: |
+        # Check if README exists and has content
+        if [ ! -s README.md ]; then
+          echo "❌ README.md is empty or missing"
+          exit 1
+        fi
+        
+        # Check if LICENSE exists
+        if [ ! -f LICENSE ]; then
+          echo "❌ LICENSE file is missing"
+          exit 1
+        fi
+        
+        # Check if .gitignore exists
+        if [ ! -f .gitignore ]; then
+          echo "❌ .gitignore file is missing"
+          exit 1
+        fi
+        
+        echo "✅ Documentation files present"
+    
+    - name: Check project structure
+      run: |
+        # Check for required files
+        required_files=("src/main.rs" "Cargo.toml" "build.sh" "install.sh" "devenv.dockerfile")
+        for file in "${required_files[@]}"; do
+          if [ ! -f "$file" ]; then
+            echo "❌ Required file missing: $file"
+            exit 1
+          fi
+        done
+        echo "✅ Project structure is correct"
+
+  security:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Run cargo audit
+      uses: actions-rs/audit-check@v1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Check for secrets in code
+      run: |
+        # Check for potential secrets in code
+        if grep -r -i "password\|secret\|key\|token" src/ --exclude="*.md" | grep -v "DEBUG\|TODO"; then
+          echo "⚠️  Potential secrets found in code"
+          exit 1
+        fi
+        echo "✅ No obvious secrets found in code" 
